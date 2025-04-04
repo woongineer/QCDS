@@ -32,13 +32,13 @@ def splittingIRIS():
     return X_train, X_val, X_test, y_train, y_val, y_test
 
 
-def IRISDataLoaders(args):
+def IRISDataLoaders(batch_size, test_batch_size):
     X_train, X_val, X_test, y_train, y_val, y_test = splittingIRIS()
     train = CustomDataset(X_train, y_train)
     val = CustomDataset(X_val, y_val)
     test = CustomDataset(X_test, y_test)
-    train_loader = torch.utils.data.DataLoader(dataset=train, batch_size=args.batch_size, shuffle=True, pin_memory=True)
-    val_loader = torch.utils.data.DataLoader(dataset=val, batch_size=args.batch_size, shuffle=True, pin_memory=True)
-    test_loader = torch.utils.data.DataLoader(dataset=test, batch_size=args.test_batch_size, shuffle=True,
+    train_loader = torch.utils.data.DataLoader(dataset=train, batch_size=batch_size, shuffle=True, pin_memory=True)
+    val_loader = torch.utils.data.DataLoader(dataset=val, batch_size=batch_size, shuffle=True, pin_memory=True)
+    test_loader = torch.utils.data.DataLoader(dataset=test, batch_size=test_batch_size, shuffle=True,
                                               pin_memory=True)
     return train_loader, val_loader, test_loader

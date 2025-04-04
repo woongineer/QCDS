@@ -5,10 +5,9 @@ import torch.optim as optim
 from QuantumNetwork import QNet
 
 
-def train(q_model, data_loader, optimizer, design, args):
+def train(q_model, data_loader, optimizer, design):
     q_model.train()
     for batch_idx, (data, target) in enumerate(data_loader):
-        data, target = data.to('cpu'), target.to('cpu')
         optimizer.zero_grad()
         output = q_model(data, design)
         loss = F.nll_loss(output, target)
@@ -16,13 +15,12 @@ def train(q_model, data_loader, optimizer, design, args):
         optimizer.step()
 
 
-def test(q_model, data_loader, design, args):
+def test(q_model, data_loader, design):
     q_model.eval()
     epoch_loss = 0
     accuracy = 0
     with torch.no_grad():
         for data, target in data_loader:
-            data, target = data.to('cpu'), target.to('cpu')
             output = q_model(data, design)
             instant_loss = F.nll_loss(output, target, reduction='sum').item()
             epoch_loss += instant_loss
@@ -33,17 +31,16 @@ def test(q_model, data_loader, design, args):
     return epoch_loss, accuracy
 
 
-def controller_train(q_model, controller, data_loader, controller_optimizer, design, log_prob, entropy, args):
+def controller_train(q_model, controller, data_loader, controller_optimizer, design, log_prob, entropy, entropy_weight):
     epoch_loss = 0
     controller.train()
     q_model.eval()
     for data, target in data_loader:
-        data, target = data.to('cpu'), target.to('cpu')
         with torch.no_grad():
             q_output = q_model(data, design)
             q_loss = F.nll_loss(q_output, target, reduction='sum').item()
         policy_loss = log_prob * q_loss
-        entropy_loss = args.entropy_weight * entropy
+        entropy_loss = entropy_weight * entropy
         instant_loss = policy_loss + entropy_loss
         instant_loss.backward()
         controller_optimizer.step()
@@ -52,21 +49,23 @@ def controller_train(q_model, controller, data_loader, controller_optimizer, des
     return epoch_loss
 
 
-def scheme(controller, train_loader, val_loader, test_loader, controller_optimizer, args):
+def scheme(controller, train_loader, val_loader, test_loader, controller_optimizer,
+           Cepochs, Qepochs, lr, QuantumPATH, entropy_weight):
     train_loss_list, val_loss_list, test_loss_list = [], [], []
     best_train_loss, best_val_loss, best_test_loss = 10000, 10000, 10000
     best_train_epoch, best_val_epoch, best_test_epoch = 0, 0, 0
     train_accuracy_list, test_accuracy_list = [], []
     best_design = None
-    for epoch in range(1, args.Cepochs + 1):
+    for epoch in range(1, Cepochs + 1):
+        print(f"Loop {epoch}")
         controller.eval()
         design, log_prob, entropy = controller()
-        q_model = QNet(args).to('cpu')
-        optimizer = optim.Adam(q_model.QuantumLayer.parameters(), lr=args.lr)
-        for q_epoch in range(1, args.Qepochs + 1):
-            train(q_model, train_loader, optimizer, design, args)
-            epoch_train_loss, epoch_train_accuracy = test(q_model, train_loader, design, args)
-            epoch_test_loss, epoch_test_accuracy = test(q_model, test_loader, design, args)
+        q_model = QNet()
+        optimizer = optim.Adam(q_model.QuantumLayer.parameters(), lr=lr)
+        for q_epoch in range(1, Qepochs + 1):
+            train(q_model, train_loader, optimizer, design)
+            epoch_train_loss, epoch_train_accuracy = test(q_model, train_loader, design)
+            epoch_test_loss, epoch_test_accuracy = test(q_model, test_loader, design)
             train_loss_list.append(epoch_train_loss)
             train_accuracy_list.append(epoch_train_accuracy)
             test_loss_list.append(epoch_test_loss)
@@ -78,7 +77,7 @@ def scheme(controller, train_loader, val_loader, test_loader, controller_optimiz
                 best_test_loss = epoch_test_loss
                 best_test_epoch = epoch
         epoch_val_loss = controller_train(q_model, controller, val_loader, controller_optimizer, design, log_prob,
-                                          entropy, args)
+                                          entropy, entropy_weight)
         val_loss_list.append(epoch_val_loss)
         if epoch_val_loss < best_val_loss:
             best_val_loss = epoch_val_loss
@@ -93,7 +92,7 @@ def scheme(controller, train_loader, val_loader, test_loader, controller_optimiz
             "best_val_epoch": best_val_epoch, "best_val_loss": best_val_loss,
             "best_train_epoch": best_train_epoch, "best_train_loss": best_train_loss,
             "best_test_epoch": best_test_epoch, "best_test_loss": best_test_loss,
-            "best_design": best_design}, args.QuantumPATH)
+            "best_design": best_design}, QuantumPATH)
     return {"test_loss_list": test_loss_list, "val_loss_list": val_loss_list, "train_loss_list": train_loss_list,
             "best_val_epoch": best_val_epoch, "best_val_loss": best_val_loss,
             "best_train_epoch": best_train_epoch, "best_train_loss": best_train_loss,

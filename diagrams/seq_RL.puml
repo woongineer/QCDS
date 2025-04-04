@@ -1,0 +1,75 @@
+@startuml
+actor User
+
+User -> main : run script
+
+main -> datasets.IRISDataLoaders : load train_loader, test_loader
+datasets.IRISDataLoaders --> main : return train_loader, test_loader
+
+main -> ControllerNetwork.Controller : create controller
+main -> QuantumNetwork.QNet : create qnet
+
+main -> schemes.scheme : run scheme(controller, qnet, train_loader, test_loader)
+
+activate schemes.scheme
+
+== Controller 강화학습 단계 ==
+
+schemes.scheme -> schemes.controller_train : train controller
+
+activate schemes.controller_train
+schemes.controller_train -> Controller : forward(batch_size)
+Controller --> schemes.controller_train : logits
+
+schemes.controller_train -> Controller : post_process(logits)
+Controller --> schemes.controller_train : sampled_actions, log_probs, entropies
+
+note right of Controller : 샘플링된 action은 회로 구조로 해석됨
+
+== Quantum model 학습 단계 ==
+
+schemes.controller_train -> QuantumNetwork.QNet : update structure (based on actions)
+schemes.controller_train -> schemes.train : train quantum model
+
+activate schemes.train
+schemes.train -> QNet : forward(x_batch)
+QNet -> QuantumLayer : forward quantum circuit
+QuantumLayer --> QNet : circuit outputs
+QNet --> schemes.train : prediction
+
+schemes.train -> loss_fn : compute model loss
+loss_fn --> schemes.train : model_loss
+
+schemes.train --> schemes.controller_train : model_loss
+deactivate schemes.train
+
+== Reward 계산 및 Policy Update ==
+
+schemes.controller_train -> RewardCalculator : compute reward(model_loss)
+RewardCalculator --> schemes.controller_train : reward
+
+schemes.controller_train -> PolicyGradient : compute policy loss
+activate PolicyGradient
+PolicyGradient -> log_probs : use for loss
+PolicyGradient --> schemes.controller_train : policy_loss
+deactivate PolicyGradient
+
+schemes.controller_train -> Optimizer : update controller weights
+Optimizer --> schemes.controller_train : updated controller
+
+schemes.controller_train --> schemes.scheme : return loss stats
+deactivate schemes.controller_train
+
+== 모델 테스트 단계 ==
+
+schemes.scheme -> schemes.test : evaluate model
+activate schemes.test
+schemes.test -> QNet : forward
+QNet --> schemes.test : prediction
+schemes.test -> AccuracyMetric : calculate accuracy
+AccuracyMetric --> schemes.test : test accuracy
+schemes.test --> schemes.scheme : test result
+deactivate schemes.test
+
+schemes.scheme --> main : done
+@enduml

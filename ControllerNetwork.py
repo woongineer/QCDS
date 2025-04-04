@@ -7,9 +7,10 @@ import torch.nn.functional as F
 
 
 class Controller(torch.nn.Module):
-    def __init__(self, args):
+    def __init__(self, n_qubits, q_depth):
         torch.nn.Module.__init__(self)
-        self.args = args
+        self.n_qubits = n_qubits
+        self.q_depth = q_depth
         self.rotations = ['x', 'y', 'z']
         self.operations = ['H', 'Px', 'Py', 'Pz', 'CNot', 'CSwap', 'Tof', 'CZ']
         self.shared_fc1 = nn.Linear(1, 48)
@@ -20,8 +21,8 @@ class Controller(torch.nn.Module):
         self.BN2 = nn.BatchNorm1d(12)
         self.fcAction = nn.ModuleDict()
 
-        for layer in range(self.args.q_depth):
-            for node in range(self.args.n_qubits):
+        for layer in range(self.q_depth):
+            for node in range(self.n_qubits):
                 self.fcAction[str(layer % 6) + str(node % 4) + '0'] = nn.Linear(12, 2)  # reUploading or Not
                 self.fcAction[str(layer % 6) + str(node % 4) + '1'] = nn.Linear(12,
                                                                                 len(self.rotations))  # which rotations
@@ -29,7 +30,7 @@ class Controller(torch.nn.Module):
                                                                                 len(self.operations))  # which operations
 
     def forward(self):
-        design = np.empty([self.args.q_depth, self.args.n_qubits, 3])
+        design = np.empty([self.q_depth, self.n_qubits, 3])
         log_prob_list = []
         entropy_list = []
         x = self.shared_fc1(torch.tensor([[1.0]]))
@@ -38,8 +39,8 @@ class Controller(torch.nn.Module):
         x = self.shared_fc2(x)
         x = F.leaky_relu(self.BN2(x))
         x = self.dropout2(x)
-        for layer in range(self.args.q_depth):
-            for node in range(self.args.n_qubits):
+        for layer in range(self.q_depth):
+            for node in range(self.n_qubits):
                 for decision in range(3):
                     logits = self.fcAction[str(layer % 6) + str(node % 4) + str(decision)](x)
                     probs = F.softmax(logits, dim=1)
@@ -57,8 +58,8 @@ class Controller(torch.nn.Module):
 
     def post_process(self, design):
         updated_design = {}
-        for l in range(self.args.q_depth):
-            for n in range(self.args.n_qubits):
+        for l in range(self.q_depth):
+            for n in range(self.n_qubits):
                 layer = str(l)
                 node = str(n)
                 if design[l, n, 0] == 0:

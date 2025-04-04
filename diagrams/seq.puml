@@ -1,33 +1,41 @@
 @startuml
 actor User
 
-participant Main as "main.py"
-participant Args as "Arguments.py"
-participant Data as "datasets.py"
-participant Ctrl as "ControllerNetwrok.py\n(Controller)"
-participant QNet as "QuantumNetwork.py"
-participant Schemes as "schemes.py"
-participant Plot as "plot.py"
-participant Runner as "runner.py"
-participant Reupload as "reuploadingPercentage.py"
+User -> main : run script
 
-User -> Main: run main()
-Main -> Args: get_args()
-Args --> Main: args
-Main -> Data: load_data(args)de
-Data --> Main: (dataset,\ninput_dim, output_dim)
-Main -> Ctrl: instantiate Controller(args)
-Ctrl -> Ctrl: __call__()
-Ctrl -> Ctrl: sample_design()
-Ctrl -> Schemes: convert_design_to_pqc(design)
-Schemes --> Ctrl: QNode (PQC)
-Ctrl -> QNet: forward(x) [train PQC]
-QNet --> Ctrl: output logits
-Ctrl -> Ctrl: evaluate accuracy & compute reward
-Ctrl -> Ctrl: update_policy(reward)
-Ctrl --> Main: training loop complete
+main -> datasets.IRISDataLoaders : load train_loader, test_loader
+datasets.IRISDataLoaders --> main : return train_loader, test_loader
 
-Main -> Plot: plot_results(results)
-Main -> Runner: run benchmark
-Main -> Reupload: calculate_percentage(design)
+main -> ControllerNetwork.Controller : create controller
+main -> QuantumNetwork.QNet : create qnet
+
+main -> schemes.scheme : run scheme(controller, qnet, train_loader, test_loader)
+
+activate schemes.scheme
+schemes.scheme -> schemes.controller_train : train controller
+activate schemes.controller_train
+schemes.controller_train -> Controller : forward
+Controller --> schemes.controller_train : logits
+
+schemes.controller_train -> Controller : post_process
+Controller --> schemes.controller_train : action
+
+schemes.controller_train --> schemes.scheme : controller loss
+
+schemes.scheme -> schemes.train : train quantum model
+activate schemes.train
+schemes.train -> QNet : forward
+QNet -> QuantumLayer : forward (quantum circuit)
+QuantumLayer --> QNet : quantum output
+QNet --> schemes.train : prediction
+schemes.train --> schemes.scheme : model loss
+
+schemes.scheme -> schemes.test : evaluate model
+activate schemes.test
+schemes.test -> QNet : forward
+QNet --> schemes.test : prediction
+schemes.test --> schemes.scheme : test accuracy
+
+schemes.scheme --> main : done
+
 @enduml
