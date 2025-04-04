@@ -1,0 +1,116 @@
+@startuml
+' --- 다이어그램 전반 스타일 ---
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+' ========== Arguments 모듈 ==========
+package "Arguments.py" {
+  class Arguments {
+    + get_args() : Namespace
+    ' argparse 기반 인자 설정 포함
+  }
+}
+
+' ========== ControllerNetwrok 모듈 ==========
+package "ControllerNetwrok.py" {
+  class Controller {
+    - totalEpisode : int
+    - architecture : List
+    - learning_rate : float
+    + __init__(args)
+    + __call__() : void
+    + train() : void
+    + sample_design() : List
+    + update_policy(reward) : void
+  }
+  class ControllerSmall {
+    + __init__(args)
+    + __call__() : void
+  }
+  class QControllerSmall {
+    + __init__(args)
+    + __call__() : void
+  }
+  ' 상속 관계
+  Controller <|-- ControllerSmall
+  Controller <|-- QControllerSmall
+}
+
+' ========== datasets 모듈 ==========
+package "datasets.py" {
+  class DatasetLoader {
+    + load_data(args) : (dataset, input_dim, output_dim)
+    ' 데이터 전처리, split 등 포함
+  }
+}
+
+' ========== QuantumNetwork 모듈 ==========
+package "QuantumNetwork.py" {
+  class QuantumNetwork {
+    - qnode : QNode
+    + __init__(args)
+    + forward(x) : Tensor
+    ' 입력 인코딩, 회로 구성, 측정 포함
+  }
+}
+
+' ========== schemes 모듈 ==========
+package "schemes.py" {
+  class Schemes {
+    + convert_design_to_pqc(design) : QNode
+    + apply_gate(gate, qubits) : void
+    ' design sequence를 실제 PennyLane 회로로 변환하는 역할
+  }
+}
+
+' ========== plot 모듈 ==========
+package "plot.py" {
+  class Plotter {
+    + plot_results(results) : void
+    + plot_accuracy(accuracy_list) : void
+    + save_plot(filename) : void
+  }
+}
+
+' ========== runner 모듈 ==========
+package "runner.py" {
+  class Runner {
+    + __init__(args)
+    + run() : void
+    ' 저장된 weight를 불러와 고정 디자인 평가 실행
+  }
+}
+
+' ========== reuploadingPercentage 모듈 ==========
+package "reuploadingPercentage.py" {
+  class ReuploadingPercentage {
+    + calculate_percentage(design) : float
+    ' Reuploading 전략 관련 계산 함수
+  }
+}
+
+' ========== main 모듈 ==========
+package "main.py" {
+  class Main {
+    + main() : void
+    ' 프로그램 전체 실행의 진입점
+  }
+}
+
+' ========== 모듈 간 관계 ==========
+Main --> Arguments : "calls get_args()"
+Main --> ControllerNetwrok.Controller : "instantiates"
+Main --> datasets.DatasetLoader : "loads data"
+Main --> QuantumNetwork.QuantumNetwork : "builds quantum network"
+Main --> schemes.Schemes : "converts design to PQC"
+Main --> plot.Plotter : "plots training/evaluation results"
+Main --> runner.Runner : "runs benchmark experiments"
+Main --> reuploadingPercentage.ReuploadingPercentage : "computes reuploading percentage"
+
+' 추가 관계: Controller 내부 처리 흐름
+Controller ..> QuantumNetwork.QuantumNetwork : "trains PQC"
+Controller ..> Schemes.Schemes : "generates circuit from design"
+ControllerSmall ..|> Controller
+QControllerSmall ..|> Controller
+
+@enduml

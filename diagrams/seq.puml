@@ -1,0 +1,33 @@
+@startuml
+actor User
+
+participant Main as "main.py"
+participant Args as "Arguments.py"
+participant Data as "datasets.py"
+participant Ctrl as "ControllerNetwrok.py\n(Controller)"
+participant QNet as "QuantumNetwork.py"
+participant Schemes as "schemes.py"
+participant Plot as "plot.py"
+participant Runner as "runner.py"
+participant Reupload as "reuploadingPercentage.py"
+
+User -> Main: run main()
+Main -> Args: get_args()
+Args --> Main: args
+Main -> Data: load_data(args)de
+Data --> Main: (dataset,\ninput_dim, output_dim)
+Main -> Ctrl: instantiate Controller(args)
+Ctrl -> Ctrl: __call__()
+Ctrl -> Ctrl: sample_design()
+Ctrl -> Schemes: convert_design_to_pqc(design)
+Schemes --> Ctrl: QNode (PQC)
+Ctrl -> QNet: forward(x) [train PQC]
+QNet --> Ctrl: output logits
+Ctrl -> Ctrl: evaluate accuracy & compute reward
+Ctrl -> Ctrl: update_policy(reward)
+Ctrl --> Main: training loop complete
+
+Main -> Plot: plot_results(results)
+Main -> Runner: run benchmark
+Main -> Reupload: calculate_percentage(design)
+@enduml
