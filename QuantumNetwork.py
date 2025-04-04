@@ -2,10 +2,14 @@ import pennylane as qml
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 from Arguments import get_args
+
 args = get_args()
 
 dev = qml.device("default.qubit", wires=args.n_qubits)
+
+
 @qml.qnode(dev, interface="torch")
 def quantum_net(q_input_features, q_weights_flat, **kwargs):
     current_design = kwargs['design']

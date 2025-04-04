@@ -1,8 +1,8 @@
 import torch
 import torch.nn.functional as F
-from Arguments import get_args
-from QuantumNetwork import QNet
 import torch.optim as optim
+
+from QuantumNetwork import QNet
 
 
 def train(q_model, data_loader, optimizer, design, args):
@@ -14,6 +14,7 @@ def train(q_model, data_loader, optimizer, design, args):
         loss = F.nll_loss(output, target)
         loss.backward()
         optimizer.step()
+
 
 def test(q_model, data_loader, design, args):
     q_model.eval()
@@ -30,6 +31,7 @@ def test(q_model, data_loader, design, args):
     epoch_loss /= len(data_loader.dataset)
     accuracy /= len(data_loader.dataset)
     return epoch_loss, accuracy
+
 
 def controller_train(q_model, controller, data_loader, controller_optimizer, design, log_prob, entropy, args):
     epoch_loss = 0
@@ -59,7 +61,7 @@ def controller_train(q_model, controller, data_loader, controller_optimizer, des
     return epoch_loss
 
 
-def Scheme(controller, train_loader, val_loader, test_loader, controller_optimizer, args):
+def scheme(controller, train_loader, val_loader, test_loader, controller_optimizer, args):
     train_loss_list, val_loss_list, test_loss_list = [], [], []
     best_train_loss, best_val_loss, best_test_loss = 10000, 10000, 10000
     best_train_epoch, best_val_epoch, best_test_epoch = 0, 0, 0
@@ -106,4 +108,3 @@ def Scheme(controller, train_loader, val_loader, test_loader, controller_optimiz
             "best_train_epoch": best_train_epoch, "best_train_loss": best_train_loss,
             "best_test_epoch": best_test_epoch, "best_test_loss": best_test_loss,
             "best_design": best_design}
-

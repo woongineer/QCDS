@@ -1,5 +1,6 @@
 import argparse
 
+
 def get_args():
     parser = argparse.ArgumentParser(description='Arguments for the Environment and RL algorithm')
 
@@ -34,10 +35,10 @@ def get_args():
         '--test_batch_size', type=int, default=1000, help='quantum Test batch size')
 
     parser.add_argument(
-        '--Cepochs', type=int, default=50, help='number of epochs for training controller')
+        '--Cepochs', type=int, default=7, help='number of epochs for training controller')
 
     parser.add_argument(
-        '--Qepochs', type=int, default=50, help='number of epochs for training quantum network')
+        '--Qepochs', type=int, default=11, help='number of epochs for training quantum network')
 
     parser.add_argument(
         '--cuda', default=False, action='store_true', help='cuda')
@@ -63,4 +64,3 @@ def get_args():
 
     args = parser.parse_args()
     return args
-

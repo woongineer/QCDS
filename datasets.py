@@ -1,9 +1,8 @@
+import numpy as np
 import torch
+from sklearn import datasets as sklearn_datasets
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
-from sklearn import datasets as sklearn_datasets
-import numpy as np
-
 
 
 class CustomDataset(Dataset):
@@ -34,7 +33,6 @@ def splittingIRIS():
     return X_train, X_val, X_test, y_train, y_val, y_test
 
 
-
 def IRISDataLoaders(args):
     X_train, X_val, X_test, y_train, y_val, y_test = splittingIRIS()
     train = CustomDataset(X_train, y_train)
@@ -42,7 +40,8 @@ def IRISDataLoaders(args):
     test = CustomDataset(X_test, y_test)
     train_loader = torch.utils.data.DataLoader(dataset=train, batch_size=args.batch_size, shuffle=True, pin_memory=True)
     val_loader = torch.utils.data.DataLoader(dataset=val, batch_size=args.batch_size, shuffle=True, pin_memory=True)
-    test_loader = torch.utils.data.DataLoader(dataset=test, batch_size=args.test_batch_size, shuffle=True, pin_memory=True)
+    test_loader = torch.utils.data.DataLoader(dataset=test, batch_size=args.test_batch_size, shuffle=True,
+                                              pin_memory=True)
     return train_loader, val_loader, test_loader
 
 
@@ -70,12 +69,11 @@ def GlassDataLoaders(args):
                 features.append(float(separated[i + 1].split(":")[1]))
             data.append(features)
 
-        features_train,features_test, labels_train, labels_test = train_test_split(data, target, random_state=1, shuffle=True)
+        features_train, features_test, labels_train, labels_test = train_test_split(data, target, random_state=1,
+                                                                                    shuffle=True)
 
         train_dataset = CustomDataset(features_train, labels_train)
         test_dataset = CustomDataset(features_test, labels_test)
         train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True)
         test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=args.batch_size, shuffle=True)
     return train_loader, test_loader
-
-

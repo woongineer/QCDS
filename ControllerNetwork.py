@@ -1,13 +1,9 @@
 import numpy as np
+import pennylane as qml
 import torch
+import torch.distributions as tdist
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.distributions as tdist
-import pennylane as qml
-
-
-
-
 
 
 class Controller(torch.nn.Module):
@@ -26,10 +22,11 @@ class Controller(torch.nn.Module):
 
         for layer in range(self.args.q_depth):
             for node in range(self.args.n_qubits):
-                self.fcAction[str(layer % 6) + str(node % 4) + '0'] = nn.Linear(12, 2) #reUploading or Not
-                self.fcAction[str(layer % 6) + str(node % 4) + '1'] = nn.Linear(12, len(self.rotations)) #which rotations
-                self.fcAction[str(layer % 6) + str(node % 4) + '2'] = nn.Linear(12, len(self.operations)) #which operations
-
+                self.fcAction[str(layer % 6) + str(node % 4) + '0'] = nn.Linear(12, 2)  # reUploading or Not
+                self.fcAction[str(layer % 6) + str(node % 4) + '1'] = nn.Linear(12,
+                                                                                len(self.rotations))  # which rotations
+                self.fcAction[str(layer % 6) + str(node % 4) + '2'] = nn.Linear(12,
+                                                                                len(self.operations))  # which operations
 
     def forward(self):
         design = np.empty([self.args.q_depth, self.args.n_qubits, 3])
@@ -57,7 +54,6 @@ class Controller(torch.nn.Module):
         log_prob = torch.sum(torch.stack(log_prob_list))
         entropy = torch.sum(torch.stack(entropy_list))
         return self.post_process(design), entropy, log_prob
-
 
     def post_process(self, design):
         updated_design = {}
@@ -97,7 +93,6 @@ class Controller(torch.nn.Module):
         return updated_design
 
 
-
 class ControllerSmall(torch.nn.Module):
     def __init__(self, args):
         torch.nn.Module.__init__(self)
@@ -113,10 +108,9 @@ class ControllerSmall(torch.nn.Module):
         self.fcAction = nn.ModuleDict()
 
         for node in range(self.args.n_qubits):
-            self.fcAction[str(node % 4) + '0'] = nn.Linear(12, 2) #reUploading or Not
-            self.fcAction[str(node % 4) + '1'] = nn.Linear(12, len(self.rotations)) #which rotations
-            self.fcAction[str(node % 4) + '2'] = nn.Linear(12, len(self.operations)) #which operations
-
+            self.fcAction[str(node % 4) + '0'] = nn.Linear(12, 2)  # reUploading or Not
+            self.fcAction[str(node % 4) + '1'] = nn.Linear(12, len(self.rotations))  # which rotations
+            self.fcAction[str(node % 4) + '2'] = nn.Linear(12, len(self.operations))  # which operations
 
     def forward(self):
         design = np.empty([self.args.n_qubits, 3])
@@ -145,7 +139,6 @@ class ControllerSmall(torch.nn.Module):
         log_prob = torch.sum(torch.stack(log_prob_list))
         entropy = torch.sum(torch.stack(entropy_list))
         return self.post_process(design), entropy, log_prob
-
 
     def post_process(self, design):
         updated_design = {}
@@ -181,9 +174,6 @@ class ControllerSmall(torch.nn.Module):
                 updated_design[node + '2'] = 'CZ'
         return updated_design
 
-    
-    
-
 
 class QuantumLayerController(nn.Module):
     def __init__(self, q_depth, n_qubits, n_output):
@@ -211,12 +201,11 @@ class QuantumLayerController(nn.Module):
 
         self.quantum_net = quantum_net
         self.q_params = nn.Parameter(torch.randn(self.q_depth * self.n_qubits))
+
     def forward(self):
-        output = self.quantum_net(self.q_params, q_depth=self.q_depth, n_qubits=self.n_qubits, n_output=self.n_output).float().unsqueeze(0)
+        output = self.quantum_net(self.q_params, q_depth=self.q_depth, n_qubits=self.n_qubits,
+                                  n_output=self.n_output).float().unsqueeze(0)
         return F.log_softmax(output, dim=1)
-
-
-
 
 
 class QControllerSmall(torch.nn.Module):
@@ -247,7 +236,6 @@ class QControllerSmall(torch.nn.Module):
         log_prob = torch.sum(torch.stack(log_prob_list))
         entropy = torch.sum(torch.stack(entropy_list))
         return self.post_process(design), entropy, log_prob
-
 
     def post_process(self, design):
         updated_design = {}
@@ -280,7 +268,3 @@ class QControllerSmall(torch.nn.Module):
             else:
                 raise Exception('Wrong non parametric value')
         return updated_design
-
-
-
-

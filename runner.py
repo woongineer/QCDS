@@ -1,12 +1,16 @@
 from __future__ import print_function
+
+import pickle
+
 import torch
 import torch.optim as optim
+
 from Arguments import get_args
 from QuantumNetwork import QNet
 from datasets import GlassDataLoaders
 from schemes import train, test
+
 args = get_args()
-import pickle
 
 
 def design_set(design):
@@ -16,7 +20,7 @@ def design_set(design):
         with open("designs/BenchMarkDesigns", 'rb') as file:
             benchMarkDesigns = pickle.load(file)
         return benchMarkDesigns[0]
-    elif design =="CNOTRU":
+    elif design == "CNOTRU":
         with open("designs/BenchMarkDesigns", 'rb') as file:
             benchMarkDesigns = pickle.load(file)
         return benchMarkDesigns[1]
@@ -24,7 +28,7 @@ def design_set(design):
         with open("designs/BenchMarkDesigns", 'rb') as file:
             benchMarkDesigns = pickle.load(file)
         return benchMarkDesigns[2]
-    elif design== "CZRU":
+    elif design == "CZRU":
         with open("designs/BenchMarkDesigns", 'rb') as file:
             benchMarkDesigns = pickle.load(file)
         return benchMarkDesigns[3]
@@ -36,13 +40,12 @@ def design_set(design):
                 return RandomDesigns[i]
     elif "selected" in design:
         for i in range(6):
-            if design=="selected{}".format(i):
+            if design == "selected{}".format(i):
                 with open("designs/SelectedDesigns", 'rb') as file:
                     SelectedDesigns = pickle.load(file)
                 return SelectedDesigns[i]
     else:
         raise Exception("Design should be a dictionary of the form {'000': True, '001': 'y', '002': 'CNot',... }")
-
 
 
 def runner(args, train_loader, test_loader, design_indicator=None):
@@ -87,12 +90,7 @@ def runner(args, train_loader, test_loader, design_indicator=None):
     return best_test, train_lossList, test_lossList, train_accuracy_list, test_accuracy_list
 
 
-
-
-
 if __name__ == '__main__':
     args = get_args()
     train_loader, test_loader = GlassDataLoaders(args)
     runner(args, train_loader, test_loader, args.design_identifier)
-
-
