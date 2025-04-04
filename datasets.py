@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 from sklearn import datasets as sklearn_datasets
-from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 
 
@@ -43,37 +42,3 @@ def IRISDataLoaders(args):
     test_loader = torch.utils.data.DataLoader(dataset=test, batch_size=args.test_batch_size, shuffle=True,
                                               pin_memory=True)
     return train_loader, val_loader, test_loader
-
-
-def GlassDataLoaders(args):
-    data = []
-    target = []
-    with open('data/glass', 'r') as f:
-        for line in f:
-            features = []
-            separated = line.split()
-            if int(separated[0]) == 1:
-                target.append(0)
-            elif int(separated[0]) == 2:
-                target.append(1)
-            elif int(separated[0]) == 3:
-                target.append(2)
-            elif int(separated[0]) == 5:
-                target.append(3)
-            elif int(separated[0]) == 6:
-                target.append(4)
-            elif int(separated[0]) == 7:
-                target.append(5)
-
-            for i in range(9):
-                features.append(float(separated[i + 1].split(":")[1]))
-            data.append(features)
-
-        features_train, features_test, labels_train, labels_test = train_test_split(data, target, random_state=1,
-                                                                                    shuffle=True)
-
-        train_dataset = CustomDataset(features_train, labels_train)
-        test_dataset = CustomDataset(features_test, labels_test)
-        train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True)
-        test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=args.batch_size, shuffle=True)
-    return train_loader, test_loader

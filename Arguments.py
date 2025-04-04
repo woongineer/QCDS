@@ -5,25 +5,7 @@ def get_args():
     parser = argparse.ArgumentParser(description='Arguments for the Environment and RL algorithm')
 
     parser.add_argument(
-        '--device', default='cpu', help='cpu or cuda device')
-
-    parser.add_argument(
-        '--design_identifier', default='selected0', help='Custom predefined designs')
-
-    parser.add_argument(
         '--path', default='Results', help='path')
-
-    parser.add_argument(
-        '--policy', default='loss', help='q_accuracy as reward or q_loss as loss')
-
-    parser.add_argument(
-        '--small_design', default=False, action='store_true', help='one layer design')
-
-    parser.add_argument(
-        '--from_scratch', default=False, action='store_true', help='not to use the saved weights')
-
-    parser.add_argument(
-        '--quantumController', default=False, action='store_true', help='quantum controller')
 
     parser.add_argument(
         '--QuantumPATH', default='quantumWeights/QuantumWeightsSaved', help='QuantumPATH')
@@ -41,9 +23,6 @@ def get_args():
         '--Qepochs', type=int, default=11, help='number of epochs for training quantum network')
 
     parser.add_argument(
-        '--cuda', default=False, action='store_true', help='cuda')
-
-    parser.add_argument(
         '--lr', type=float, default=0.01, help='Learning rate')
 
     parser.add_argument(
@@ -54,11 +33,13 @@ def get_args():
 
     parser.add_argument(
         '--seed', type=int, default=1, help='Seed')
+
     parser.add_argument(
         '--n_qubits', type=int, default=4, help='number of qubits')
 
     parser.add_argument(
         '--n_output', type=int, default=3, help='number of output measurements')
+
     parser.add_argument(
         '--q_depth', type=int, default=6, help='Depth of the stacked quantum layer')
 

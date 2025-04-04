@@ -8,7 +8,7 @@ from QuantumNetwork import QNet
 def train(q_model, data_loader, optimizer, design, args):
     q_model.train()
     for batch_idx, (data, target) in enumerate(data_loader):
-        data, target = data.to(args.device), target.to(args.device)
+        data, target = data.to('cpu'), target.to('cpu')
         optimizer.zero_grad()
         output = q_model(data, design)
         loss = F.nll_loss(output, target)
@@ -22,7 +22,7 @@ def test(q_model, data_loader, design, args):
     accuracy = 0
     with torch.no_grad():
         for data, target in data_loader:
-            data, target = data.to(args.device), target.to(args.device)
+            data, target = data.to('cpu'), target.to('cpu')
             output = q_model(data, design)
             instant_loss = F.nll_loss(output, target, reduction='sum').item()
             epoch_loss += instant_loss
@@ -37,27 +37,18 @@ def controller_train(q_model, controller, data_loader, controller_optimizer, des
     epoch_loss = 0
     controller.train()
     q_model.eval()
-    accuracy = 0
     for data, target in data_loader:
-        data, target = data.to(args.device), target.to(args.device)
+        data, target = data.to('cpu'), target.to('cpu')
         with torch.no_grad():
             q_output = q_model(data, design)
-            if args.policy == "loss":
-                q_loss = F.nll_loss(q_output, target, reduction='sum').item()
-            else:
-                prediction = q_output.argmax(dim=1, keepdim=True)
-                accuracy += prediction.eq(target.view_as(prediction)).sum().item()
-        if args.policy == "loss":
-            policy_loss = log_prob * q_loss
-        else:
-            policy_loss = log_prob * (1 - accuracy / len(target))
+            q_loss = F.nll_loss(q_output, target, reduction='sum').item()
+        policy_loss = log_prob * q_loss
         entropy_loss = args.entropy_weight * entropy
         instant_loss = policy_loss + entropy_loss
         instant_loss.backward()
         controller_optimizer.step()
         epoch_loss += instant_loss.item()
-    if args.policy == "loss":
-        epoch_loss /= len(data_loader.dataset)
+    epoch_loss /= len(data_loader.dataset)
     return epoch_loss
 
 
@@ -70,7 +61,7 @@ def scheme(controller, train_loader, val_loader, test_loader, controller_optimiz
     for epoch in range(1, args.Cepochs + 1):
         controller.eval()
         design, log_prob, entropy = controller()
-        q_model = QNet(args).to(args.device)
+        q_model = QNet(args).to('cpu')
         optimizer = optim.Adam(q_model.QuantumLayer.parameters(), lr=args.lr)
         for q_epoch in range(1, args.Qepochs + 1):
             train(q_model, train_loader, optimizer, design, args)

@@ -18,14 +18,9 @@ def quantum_net(q_input_features, q_weights_flat, **kwargs):
         qml.Hadamard(wires=idx)
     for layer in range(args.q_depth):
         for node in range(args.n_qubits):
-            if args.small_design:
-                layer_node0 = current_design[str(node % 4) + '0']
-                layer_node1 = current_design[str(node % 4) + '1']
-                layer_node2 = current_design[str(node % 4) + '2']
-            else:
-                layer_node0 = current_design[str(layer % 6) + str(node % 4) + '0']
-                layer_node1 = current_design[str(layer % 6) + str(node % 4) + '1']
-                layer_node2 = current_design[str(layer % 6) + str(node % 4) + '2']
+            layer_node0 = current_design[str(layer % 6) + str(node % 4) + '0']
+            layer_node1 = current_design[str(layer % 6) + str(node % 4) + '1']
+            layer_node2 = current_design[str(layer % 6) + str(node % 4) + '2']
             if layer_node0:
                 qml.RY(q_input_features[node], wires=node)
             if layer_node1 == 'x':
@@ -65,7 +60,7 @@ class QuantumLayer(nn.Module):
 
     def forward(self, input_features, design):
         q_out = torch.Tensor(0, self.args.n_output)
-        q_out = q_out.to(self.args.device)
+        q_out = q_out.to('cpu')
         for elem in input_features:
             q_out_elem = quantum_net(elem, self.q_params, design=design).float().unsqueeze(0)
             q_out = torch.cat((q_out, q_out_elem))
