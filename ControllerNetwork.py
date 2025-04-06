@@ -1,5 +1,4 @@
 import numpy as np
-import pennylane as qml
 import torch
 import torch.distributions as tdist
 import torch.nn as nn

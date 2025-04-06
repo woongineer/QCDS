@@ -1,26 +1,21 @@
 import pennylane as qml
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 n_qubits = 4
-n_output = 3
 q_depth = 6
 
 dev = qml.device("default.qubit", wires=n_qubits)
 
 
-@qml.qnode(dev, interface="torch")
-def quantum_net(q_input_features, q_weights_flat, **kwargs):
-    current_design = kwargs['design']
-    q_weights = q_weights_flat.reshape(q_depth, n_qubits)
+def quantum_net(q_input_features, q_weights, design):
     for idx in range(n_qubits):
         qml.Hadamard(wires=idx)
     for layer in range(q_depth):
         for node in range(n_qubits):
-            layer_node0 = current_design[str(layer % 6) + str(node % 4) + '0']
-            layer_node1 = current_design[str(layer % 6) + str(node % 4) + '1']
-            layer_node2 = current_design[str(layer % 6) + str(node % 4) + '2']
+            layer_node0 = design[str(layer % 6) + str(node % 4) + '0']
+            layer_node1 = design[str(layer % 6) + str(node % 4) + '1']
+            layer_node2 = design[str(layer % 6) + str(node % 4) + '2']
             if layer_node0:
                 qml.RY(q_input_features[node], wires=node)
             if layer_node1 == 'x':
@@ -45,24 +40,36 @@ def quantum_net(q_input_features, q_weights_flat, **kwargs):
                 qml.Toffoli(wires=[node, (node + 1) % n_qubits, (node + 2) % n_qubits])
             if layer_node2 == 'CZ':
                 qml.CZ(wires=[node, (node + 1) % n_qubits])
-    exp_vals = [qml.expval(qml.PauliZ(position)) for position in range(n_output)]
-    return tuple(exp_vals)
 
 
 ##############################################################################
+
+@qml.qnode(dev, interface="torch")
+def fidelity_qnode(x1, x2, q_weights_flat, design):
+    q_weights = q_weights_flat.reshape(q_depth, n_qubits)
+
+    quantum_net(x1, q_weights, design)
+    qml.adjoint(quantum_net)(x2, q_weights, design)
+
+    return qml.probs(wires=range(n_qubits))
+
 
 class QuantumLayer(nn.Module):
 
     def __init__(self):
         super().__init__()
-        self.q_params = nn.Parameter(torch.randn(q_depth * n_qubits))
+        self.q_params = nn.Parameter(torch.randn(q_depth * n_qubits, dtype=torch.float64))
 
-    def forward(self, input_features, design):
-        q_out = torch.Tensor(0, n_output)
-        for elem in input_features:
-            q_out_elem = quantum_net(elem, self.q_params, design=design).float().unsqueeze(0)
-            q_out = torch.cat((q_out, q_out_elem))
-        return q_out
+    def forward(self, x1, x2, design):
+        x1 = x1.double()
+        x2 = x2.double()
+
+        fidelities = []
+        for a, b in zip(x1, x2):
+            probs = fidelity_qnode(a, b, self.q_params, design=design)
+            fidelities.append(probs[0])
+
+        return torch.stack(fidelities)
 
 
 class QNet(nn.Module):
@@ -70,7 +77,6 @@ class QNet(nn.Module):
         super(QNet, self).__init__()
         self.QuantumLayer = QuantumLayer()
 
-    def forward(self, x, design):
-        x = self.QuantumLayer(x, design)
-        output = F.log_softmax(x, dim=1)
-        return output
+    def forward(self, x1, x2, design):
+        fidelity = self.QuantumLayer(x1, x2, design)
+        return fidelity

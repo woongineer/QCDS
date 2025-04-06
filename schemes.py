@@ -1,5 +1,4 @@
 import torch
-import torch.nn.functional as F
 import torch.optim as optim
 
 from QuantumNetwork import QNet
@@ -7,46 +6,58 @@ from QuantumNetwork import QNet
 
 def train(q_model, data_loader, optimizer, design):
     q_model.train()
-    for batch_idx, (data, target) in enumerate(data_loader):
+    loss_fn = torch.nn.MSELoss()
+
+    total_loss = 0.0
+    for _, (x1, x2, target) in enumerate(data_loader):
         optimizer.zero_grad()
-        output = q_model(data, design)
-        loss = F.nll_loss(output, target)
+        output = q_model(x1, x2, design)
+        loss = loss_fn(output, target.double())
         loss.backward()
         optimizer.step()
+        total_loss += loss.item()
+
+    return total_loss / len(data_loader)
 
 
 def test(q_model, data_loader, design):
     q_model.eval()
+    loss_fn = torch.nn.MSELoss()
     epoch_loss = 0
-    accuracy = 0
     with torch.no_grad():
-        for data, target in data_loader:
-            output = q_model(data, design)
-            instant_loss = F.nll_loss(output, target, reduction='sum').item()
+        for x1, x2, target in data_loader:
+            output = q_model(x1, x2, design)
+            instant_loss = loss_fn(output, target.double())
             epoch_loss += instant_loss
-            prediction = output.argmax(dim=1, keepdim=True)
-            accuracy += prediction.eq(target.view_as(prediction)).sum().item()
     epoch_loss /= len(data_loader.dataset)
-    accuracy /= len(data_loader.dataset)
-    return epoch_loss, accuracy
+    return epoch_loss
 
 
 def controller_train(q_model, controller, data_loader, controller_optimizer, design, log_prob, entropy, entropy_weight):
-    epoch_loss = 0
     controller.train()
+    loss_fn = torch.nn.MSELoss()
     q_model.eval()
-    for data, target in data_loader:
+
+    total_q_loss = 0.0
+    # ---- (1) batch별 q_loss를 합산만 먼저 한다. backward 없음
+    for x1, x2, target in data_loader:
         with torch.no_grad():
-            q_output = q_model(data, design)
-            q_loss = F.nll_loss(q_output, target, reduction='sum').item()
-        policy_loss = log_prob * q_loss
-        entropy_loss = entropy_weight * entropy
-        instant_loss = policy_loss + entropy_loss
-        instant_loss.backward()
-        controller_optimizer.step()
-        epoch_loss += instant_loss.item()
-    epoch_loss /= len(data_loader.dataset)
-    return epoch_loss
+            q_output = q_model(x1, x2, design)
+            q_loss = loss_fn(q_output, target.double())
+        total_q_loss += q_loss
+
+    # ---- (2) 전체 loss를 구하고, 한 번만 backward
+    total_q_loss /= len(data_loader.dataset)
+    policy_loss = log_prob * total_q_loss
+    entropy_loss = entropy_weight * entropy
+    total_loss = policy_loss + entropy_loss
+
+    controller_optimizer.zero_grad()
+    total_loss.backward()
+    controller_optimizer.step()
+
+    return total_loss.item()
+
 
 
 def scheme(controller, train_loader, val_loader, test_loader, controller_optimizer,
@@ -54,7 +65,6 @@ def scheme(controller, train_loader, val_loader, test_loader, controller_optimiz
     train_loss_list, val_loss_list, test_loss_list = [], [], []
     best_train_loss, best_val_loss, best_test_loss = 10000, 10000, 10000
     best_train_epoch, best_val_epoch, best_test_epoch = 0, 0, 0
-    train_accuracy_list, test_accuracy_list = [], []
     best_design = None
     for epoch in range(1, Cepochs + 1):
         print(f"Loop {epoch}")
@@ -62,20 +72,21 @@ def scheme(controller, train_loader, val_loader, test_loader, controller_optimiz
         design, log_prob, entropy = controller()
         q_model = QNet()
         optimizer = optim.Adam(q_model.QuantumLayer.parameters(), lr=lr)
+
         for q_epoch in range(1, Qepochs + 1):
-            train(q_model, train_loader, optimizer, design)
-            epoch_train_loss, epoch_train_accuracy = test(q_model, train_loader, design)
-            epoch_test_loss, epoch_test_accuracy = test(q_model, test_loader, design)
+            fidelity_loss = train(q_model, train_loader, optimizer, design)
+            print(f"[Controller Epoch {epoch} | QNet Epoch {q_epoch}] Fidelity loss: {fidelity_loss:.6f}")
+            epoch_train_loss = test(q_model, train_loader, design)
+            epoch_test_loss = test(q_model, test_loader, design)
             train_loss_list.append(epoch_train_loss)
-            train_accuracy_list.append(epoch_train_accuracy)
             test_loss_list.append(epoch_test_loss)
-            test_accuracy_list.append(epoch_test_accuracy)
             if epoch_train_loss < best_train_loss:
                 best_train_loss = epoch_train_loss
                 best_train_epoch = epoch
             if epoch_test_loss < best_test_loss:
                 best_test_loss = epoch_test_loss
                 best_test_epoch = epoch
+
         epoch_val_loss = controller_train(q_model, controller, val_loader, controller_optimizer, design, log_prob,
                                           entropy, entropy_weight)
         val_loss_list.append(epoch_val_loss)
@@ -83,6 +94,7 @@ def scheme(controller, train_loader, val_loader, test_loader, controller_optimiz
             best_val_loss = epoch_val_loss
             best_val_epoch = epoch
             best_design = design
+
         torch.save({
             'epoch': epoch, 'q_model_state_dict': q_model.QuantumLayer.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
@@ -93,6 +105,7 @@ def scheme(controller, train_loader, val_loader, test_loader, controller_optimiz
             "best_train_epoch": best_train_epoch, "best_train_loss": best_train_loss,
             "best_test_epoch": best_test_epoch, "best_test_loss": best_test_loss,
             "best_design": best_design}, QuantumPATH)
+
     return {"test_loss_list": test_loss_list, "val_loss_list": val_loss_list, "train_loss_list": train_loss_list,
             "best_val_epoch": best_val_epoch, "best_val_loss": best_val_loss,
             "best_train_epoch": best_train_epoch, "best_train_loss": best_train_loss,
