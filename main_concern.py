@@ -32,6 +32,6 @@ if __name__ == '__main__':
     ControllerModel = Controller(n_qubits, q_depth)
     controller_optimizer = torch.optim.Adam(ControllerModel.parameters(), lr=Clr, eps=1e-3)
     report = scheme(ControllerModel, train_loader, val_loader, test_loader, controller_optimizer,
-                    Cepochs, Qepochs, lr, QuantumPATH, entropy_weight, my_concern=False)
+                    Cepochs, Qepochs, lr, QuantumPATH, entropy_weight, my_concern=True)
 
     print("report: ", report)

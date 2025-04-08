@@ -53,7 +53,7 @@ class Controller(torch.nn.Module):
         design = torch.tensor(design)
         log_prob = torch.sum(torch.stack(log_prob_list))
         entropy = torch.sum(torch.stack(entropy_list))
-        return self.post_process(design), entropy, log_prob
+        return self.post_process(design), log_prob, entropy  ##TODO check if it is correct
 
     def post_process(self, design):
         updated_design = {}

@@ -5,7 +5,7 @@ from sklearn.decomposition import PCA
 from torch.utils.data import Dataset, DataLoader
 
 
-def noramalize(x):
+def normalize(x):
     return (x - x.min()) * (2 * np.pi / (x.max() - x.min()))
 
 def data_load_and_process(dataset="kmnist", reduction_sz: int = 4):
@@ -55,13 +55,13 @@ def data_load_and_process(dataset="kmnist", reduction_sz: int = 4):
 
     x_train, x_val, x_test = [], [], []
     for x in X_train_sliced:
-        x = noramalize(x)
+        x = normalize(x)
         x_train.append(x)
     for x in X_val_sliced:
-        x = noramalize(x)
+        x = normalize(x)
         x_val.append(x)
     for x in X_test_sliced:
-        x = noramalize(x)
+        x = normalize(x)
         x_test.append(x)
 
     return x_train, x_val, x_test, y_train_sliced, y_val_sliced, y_test_sliced
